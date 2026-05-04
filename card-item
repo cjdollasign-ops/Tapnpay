@@ -1,0 +1,108 @@
+import React from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { StoredCard } from '@/lib/card-storage';
+import { getBrandColor, getBrandName } from '@/lib/card-utils';
+import { useColors } from '@/hooks/use-colors';
+
+interface CardItemProps {
+  card: StoredCard;
+  isSelected?: boolean;
+  onPress?: () => void;
+  onLongPress?: () => void;
+}
+
+export function CardItem({
+  card,
+  isSelected = false,
+  onPress,
+  onLongPress,
+}: CardItemProps) {
+  const colors = useColors();
+  const brandColor = getBrandColor(card.cardBrand);
+  const brandName = getBrandName(card.cardBrand);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress}
+      style={({ pressed }) => [
+        styles.container,
+        {
+          backgroundColor: colors.surface,
+          borderColor: isSelected ? colors.primary : colors.border,
+          borderWidth: isSelected ? 2 : 1,
+          opacity: pressed ? 0.7 : 1,
+        },
+      ]}
+    >
+      <View style={[styles.brandBar, { backgroundColor: brandColor }]} />
+
+      <View style={styles.content}>
+        {/* Brand and Last 4 Digits */}
+        <View style={styles.headerRow}>
+          <Text style={[styles.brand, { color: colors.foreground }]}>
+            {brandName}
+          </Text>
+          <Text style={[styles.lastFour, { color: colors.muted }]}>
+            •••• {card.cardNumber.slice(-4)}
+          </Text>
+        </View>
+
+        {/* Cardholder Name */}
+        <Text
+          style={[styles.cardholderName, { color: colors.foreground }]}
+          numberOfLines={1}
+        >
+          {card.cardholderName}
+        </Text>
+
+        {/* Expiry Date */}
+        <Text style={[styles.expiryDate, { color: colors.muted }]}>
+          Expires {card.expiryDate}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    borderRadius: 12,
+    marginVertical: 8,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  brandBar: {
+    height: 4,
+  },
+  content: {
+    padding: 16,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  brand: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  lastFour: {
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: 1,
+  },
+  cardholderName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  expiryDate: {
+    fontSize: 12,
+  },
+});

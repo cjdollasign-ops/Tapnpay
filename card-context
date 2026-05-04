@@ -1,0 +1,169 @@
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { getAllCards, addCard, updateCard, deleteCard, updateLastUsed, StoredCard } from './card-storage';
+import { ParsedCard } from './card-utils';
+
+interface CardContextType {
+  cards: StoredCard[];
+  selectedCardId: string | null;
+  isLoading: boolean;
+  error: string | null;
+  
+  // Actions
+  loadCards: () => Promise<void>;
+  addNewCard: (cardData: ParsedCard) => Promise<StoredCard | null>;
+  updateCardName: (id: string, name: string) => Promise<StoredCard | null>;
+  removeCard: (id: string) => Promise<boolean>;
+  selectCard: (id: string) => void;
+  deselectCard: () => void;
+  getSelectedCard: () => StoredCard | null;
+  recordPayment: (id: string) => Promise<void>;
+}
+
+const CardContext = createContext<CardContextType | undefined>(undefined);
+
+export function CardProvider({ children }: { children: React.ReactNode }) {
+  const [cards, setCards] = useState<StoredCard[]>([]);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load cards on mount
+  useEffect(() => {
+    loadCards();
+  }, []);
+
+  const loadCards = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const loadedCards = await getAllCards();
+      setCards(loadedCards);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load cards');
+      console.error('Error loading cards:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addNewCard = async (cardData: ParsedCard): Promise<StoredCard | null> => {
+    try {
+      setError(null);
+      const newCard = await addCard({
+        cardNumber: cardData.cardNumber,
+        cardNumberMasked: cardData.cardNumberMasked,
+        cardholderName: cardData.cardholderName,
+        expiryDate: cardData.expiryDate,
+        cardBrand: cardData.cardBrand,
+        trackData: cardData.trackData,
+        cvv: cardData.cvv,
+      });
+
+      if (newCard) {
+        setCards((prev) => [...prev, newCard]);
+      }
+
+      return newCard;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to add card';
+      setError(message);
+      console.error('Error adding card:', err);
+      return null;
+    }
+  };
+
+  const updateCardName = async (id: string, name: string): Promise<StoredCard | null> => {
+    try {
+      setError(null);
+      const updated = await updateCard(id, { cardholderName: name });
+
+      if (updated) {
+        setCards((prev) =>
+          prev.map((card) => (card.id === id ? updated : card))
+        );
+      }
+
+      return updated;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update card';
+      setError(message);
+      console.error('Error updating card:', err);
+      return null;
+    }
+  };
+
+  const removeCard = async (id: string): Promise<boolean> => {
+    try {
+      setError(null);
+      const success = await deleteCard(id);
+
+      if (success) {
+        setCards((prev) => prev.filter((card) => card.id !== id));
+        if (selectedCardId === id) {
+          setSelectedCardId(null);
+        }
+      }
+
+      return success;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete card';
+      setError(message);
+      console.error('Error deleting card:', err);
+      return false;
+    }
+  };
+
+  const selectCard = (id: string) => {
+    const card = cards.find((c) => c.id === id);
+    if (card) {
+      setSelectedCardId(id);
+    }
+  };
+
+  const deselectCard = () => {
+    setSelectedCardId(null);
+  };
+
+  const getSelectedCard = (): StoredCard | null => {
+    if (!selectedCardId) return null;
+    return cards.find((c) => c.id === selectedCardId) || null;
+  };
+
+  const recordPayment = async (id: string) => {
+    try {
+      await updateLastUsed(id);
+      setCards((prev) =>
+        prev.map((card) =>
+          card.id === id ? { ...card, lastUsed: Date.now() } : card
+        )
+      );
+    } catch (err) {
+      console.error('Error recording payment:', err);
+    }
+  };
+
+  const value: CardContextType = {
+    cards,
+    selectedCardId,
+    isLoading,
+    error,
+    loadCards,
+    addNewCard,
+    updateCardName,
+    removeCard,
+    selectCard,
+    deselectCard,
+    getSelectedCard,
+    recordPayment,
+  };
+
+  return <CardContext.Provider value={value}>{children}</CardContext.Provider>;
+}
+
+export function useCards(): CardContextType {
+  const context = useContext(CardContext);
+  if (context === undefined) {
+    throw new Error('useCards must be used within CardProvider');
+  }
+  return context;
+}

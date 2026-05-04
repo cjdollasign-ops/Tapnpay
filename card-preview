@@ -1,0 +1,170 @@
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { StoredCard } from '@/lib/card-storage';
+import { getBrandColor, getBrandName } from '@/lib/card-utils';
+import { useColors } from '@/hooks/use-colors';
+
+interface CardPreviewProps {
+  card: StoredCard;
+  size?: 'small' | 'large';
+}
+
+export function CardPreview({ card, size = 'large' }: CardPreviewProps) {
+  const colors = useColors();
+  const brandColor = getBrandColor(card.cardBrand);
+  const brandName = getBrandName(card.cardBrand);
+  const isLarge = size === 'large';
+
+  return (
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: brandColor,
+          height: isLarge ? 220 : 160,
+          borderRadius: isLarge ? 16 : 12,
+        },
+      ]}
+    >
+      {/* Chip */}
+      <View
+        style={[
+          styles.chip,
+          {
+            width: isLarge ? 50 : 40,
+            height: isLarge ? 40 : 32,
+          },
+        ]}
+      />
+
+      {/* Content */}
+      <View style={styles.content}>
+        {/* Brand Name */}
+        <Text
+          style={[
+            styles.brandName,
+            {
+              fontSize: isLarge ? 16 : 12,
+              color: '#ffffff',
+            },
+          ]}
+        >
+          {brandName}
+        </Text>
+
+        {/* Card Number */}
+        <Text
+          style={[
+            styles.cardNumber,
+            {
+              fontSize: isLarge ? 24 : 18,
+              letterSpacing: isLarge ? 2 : 1.5,
+              marginVertical: isLarge ? 16 : 12,
+              color: '#ffffff',
+            },
+          ]}
+        >
+          •••• •••• •••• {card.cardNumber.slice(-4)}
+        </Text>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <View>
+            <Text
+              style={[
+                styles.label,
+                {
+                  fontSize: isLarge ? 10 : 8,
+                  color: 'rgba(255, 255, 255, 0.7)',
+                },
+              ]}
+            >
+              CARDHOLDER
+            </Text>
+            <Text
+              style={[
+                styles.cardholderName,
+                {
+                  fontSize: isLarge ? 14 : 11,
+                  color: '#ffffff',
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {card.cardholderName}
+            </Text>
+          </View>
+
+          <View>
+            <Text
+              style={[
+                styles.label,
+                {
+                  fontSize: isLarge ? 10 : 8,
+                  color: 'rgba(255, 255, 255, 0.7)',
+                },
+              ]}
+            >
+              EXPIRES
+            </Text>
+            <Text
+              style={[
+                styles.expiryDate,
+                {
+                  fontSize: isLarge ? 14 : 11,
+                  color: '#ffffff',
+                },
+              ]}
+            >
+              {card.expiryDate}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    justifyContent: 'space-between',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  chip: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  brandName: {
+    fontWeight: '600',
+    marginTop: 12,
+  },
+  cardNumber: {
+    fontWeight: '500',
+    letterSpacing: 2,
+    textAlign: 'center',
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  label: {
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  cardholderName: {
+    fontWeight: '500',
+  },
+  expiryDate: {
+    fontWeight: '500',
+  },
+});

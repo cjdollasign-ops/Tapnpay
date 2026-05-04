@@ -1,0 +1,299 @@
+import { ScrollView, Text, View, Pressable, TextInput, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { CardPreview } from '@/components/card-preview';
+import { useCards } from '@/lib/card-context';
+import { useColors } from '@/hooks/use-colors';
+import { parseTrackData, validateCardNumber, validateExpiryDate } from '@/lib/card-utils';
+import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
+
+export default function AddCardScreen() {
+  const router = useRouter();
+  const { addNewCard } = useCards();
+  const colors = useColors();
+
+  const [trackData, setTrackData] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [parsedCard, setParsedCard] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleTrackDataChange = (text: string) => {
+    setTrackData(text);
+    setError(null);
+
+    // Try to parse track data in real-time
+    if (text.trim()) {
+      const parsed = parseTrackData(text);
+      if (parsed) {
+        setParsedCard(parsed);
+      } else {
+        setParsedCard(null);
+      }
+    } else {
+      setParsedCard(null);
+    }
+  };
+
+  const handleSaveCard = async () => {
+    if (!parsedCard) {
+      setError('Please enter valid track data');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await addNewCard(parsedCard);
+      if (result) {
+        Alert.alert('Success', 'Card added successfully!', [
+          {
+            text: 'OK',
+            onPress: () => router.back(),
+          },
+        ]);
+      } else {
+        setError('Failed to add card. It may already exist.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add card');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <ScreenContainer className="flex-1 bg-background">
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 16,
+          paddingVertical: 16,
+        }}
+      >
+        {/* Header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => ({
+              opacity: pressed ? 0.7 : 1,
+              marginRight: 12,
+            })}
+          >
+            <Ionicons name="chevron-back" size={28} color={colors.primary} />
+          </Pressable>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: '700',
+              color: colors.foreground,
+            }}
+          >
+            Add New Card
+          </Text>
+        </View>
+
+        {/* Card Preview */}
+        {parsedCard && (
+          <View style={{ marginBottom: 24 }}>
+            <CardPreview card={parsedCard} size="large" />
+          </View>
+        )}
+
+        {/* Track Data Input */}
+        <View style={{ marginBottom: 24 }}>
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: '600',
+              color: colors.foreground,
+              marginBottom: 8,
+            }}
+          >
+            Track Data (ISO/IEC 7813)
+          </Text>
+          <TextInput
+            placeholder="Paste track data here"
+            placeholderTextColor={colors.muted}
+            value={trackData}
+            onChangeText={handleTrackDataChange}
+            multiline
+            numberOfLines={4}
+            style={{
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: 8,
+              padding: 12,
+              color: colors.foreground,
+              backgroundColor: colors.surface,
+              fontFamily: 'monospace',
+              fontSize: 12,
+              minHeight: 100,
+            }}
+          />
+          <Text
+            style={{
+              fontSize: 12,
+              color: colors.muted,
+              marginTop: 8,
+            }}
+          >
+            Supports Track 1 and Track 2 formats
+          </Text>
+        </View>
+
+        {/* Card Details Display */}
+        {parsedCard && (
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 24,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: '600',
+                color: colors.foreground,
+                marginBottom: 12,
+              }}
+            >
+              Card Details
+            </Text>
+
+            <View style={{ gap: 8 }}>
+              <DetailRow
+                label="Card Number"
+                value={parsedCard.cardNumberMasked}
+                colors={colors}
+              />
+              <DetailRow
+                label="Cardholder"
+                value={parsedCard.cardholderName}
+                colors={colors}
+              />
+              <DetailRow
+                label="Expiry Date"
+                value={parsedCard.expiryDate}
+                colors={colors}
+              />
+              <DetailRow
+                label="Card Brand"
+                value={parsedCard.cardBrand.charAt(0).toUpperCase() + parsedCard.cardBrand.slice(1)}
+                colors={colors}
+              />
+            </View>
+          </View>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <View
+            style={{
+              backgroundColor: colors.error,
+              borderRadius: 8,
+              padding: 12,
+              marginBottom: 24,
+            }}
+          >
+            <Text
+              style={{
+                color: '#ffffff',
+                fontSize: 14,
+                fontWeight: '500',
+              }}
+            >
+              {error}
+            </Text>
+          </View>
+        )}
+
+        {/* Buttons */}
+        <View style={{ gap: 12, marginTop: 'auto' }}>
+          <Pressable
+            onPress={handleSaveCard}
+            disabled={!parsedCard || isLoading}
+            style={({ pressed }) => ({
+              paddingVertical: 14,
+              paddingHorizontal: 16,
+              backgroundColor: parsedCard ? colors.primary : colors.muted,
+              borderRadius: 8,
+              opacity: pressed ? 0.8 : 1,
+            })}
+          >
+            <Text
+              style={{
+                color: '#ffffff',
+                fontWeight: '600',
+                textAlign: 'center',
+                fontSize: 16,
+              }}
+            >
+              {isLoading ? 'Saving...' : 'Save Card'}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => ({
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              backgroundColor: colors.surface,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: colors.border,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text
+              style={{
+                color: colors.foreground,
+                fontWeight: '600',
+                textAlign: 'center',
+              }}
+            >
+              Cancel
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  colors,
+}: {
+  label: string;
+  value: string;
+  colors: any;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingBottom: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+      }}
+    >
+      <Text style={{ fontSize: 12, color: colors.muted }}>{label}</Text>
+      <Text
+        style={{
+          fontSize: 12,
+          fontWeight: '600',
+          color: colors.foreground,
+        }}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
